@@ -1,0 +1,11 @@
+boto==2.48.0
+boto3==1.5.22
+botocore==1.8.36
+docopt==0.6.2
+docutils==0.14
+jmespath==0.9.3
+netifaces==0.10.6
+python-dateutil==2.6.1
+redis==2.10.6
+s3transfer==0.1.12
+six==1.11.0
