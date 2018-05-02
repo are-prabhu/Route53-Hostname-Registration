@@ -23,6 +23,7 @@ TODO: This might be a terrible lies.
 ENHANCEMENT: 
     1) Improve the script to perform deregistration.
     2) Enhance to support differnt DBs
+    3) Improve the script to use environments
 """
 
 
@@ -155,6 +156,13 @@ def redis_ping(name, suffix, check=True):
     LOG.info("Updating TTL: %s", key)
     return r.set(key, localIP, ex=REDIS_TTL)
 
+def redis_hostip_check(ip):
+    r = redis_connection()
+    for key in r.scan_iter():
+        if r.get(key).decode("utf-8") == localIP:
+            return True
+    return False
+
 
 def redis_for_hostname(name):
     """
@@ -260,10 +268,10 @@ def dns_upsert_alias(name, zoneid, IP):
                     }
             }
     return dnsupsert
-
 def record_register(name,IP):
     """ Consolidate DNS name and IP to upsert"""
     newname=name+'.'+ hostedrecord+'.'
+    rolename=name.split('-')[0] +'.'+ hostedrecord+'.'
     for zone in results['ListHostedZonesResponse']['HostedZones']:
         zonename=list(zone['Name'])[:-1]
         zonename=''.join(zonename)
@@ -280,10 +288,31 @@ def record_register(name,IP):
                                    ChangeBatch={'Changes': [upsert]})
                 else:
                     upsert = dns_upsert_alias(newname,zone_id,IP)
+                    '''
                     response = client.change_resource_record_sets(
                                 HostedZoneId=zone_id,
                                 ChangeBatch={'Changes': [upsert]})
-
+                    '''
+                if recordset.name == rolename:
+                    recset=[]
+                    for r in recordset.resource_records:
+                        if redis_hostip_check(r) == True:
+                            recset.append(r)
+                    
+                    if localIP not in recordset.resource_records:
+                        recset.append(localIP)
+                    roleupsert=dns_upsert_alias(rolename,zone_id,recset)
+                    response = client.change_resource_record_sets(
+                                HostedZoneId=zone_id,
+                                ChangeBatch={'Changes': [roleupsert]})
+                else:
+                    roleupsert=dns_upsert_alias(rolename,zone_id,[localIP])
+                    response = client.change_resource_record_sets(
+                                HostedZoneId=zone_id,
+                                ChangeBatch={'Changes': [roleupsert]})
+                    
+                    
+                
 def main(arguments):
     """Daemon loop to keep hostname current."""
     role = arguments['<role>']
