@@ -10,6 +10,7 @@ Options:
   -h --help     Show this screen.
   --version     Show version.
   --one-shot    Run once and exit.
+  --env         Environment
   --debug       Enable debug mode
   --safe        Print but don't actually delete any queues.
 """
@@ -256,6 +257,7 @@ def dns_upsert_alias(name, zoneid, IP):
     all_records=[]
     for each_value in IP:
        all_records.append({ 'Value': each_value })
+    LOG.info("Constructing DNS upsert json for %s", newname)
 
     dnsupsert = {
                     'Action': 'UPSERT',
@@ -282,12 +284,14 @@ def record_register(name,IP):
             for recordset in recordSets.get_records():
                 if recordset.name == newname:
                     if localIP != recordset.to_print():
+                        LOG.info("Upserting DNS name as %s", newname)
                         upsert = dns_upsert_alias(newname,zone_id,[localIP])
                         response = client.change_resource_record_sets(
                                    HostedZoneId=zone_id,
                                    ChangeBatch={'Changes': [upsert]})
                 else:
                     upsert = dns_upsert_alias(newname,zone_id,IP)
+                    LOG.info("Upserted DNS name as %s", newname)
                     '''
                     response = client.change_resource_record_sets(
                                 HostedZoneId=zone_id,
